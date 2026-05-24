@@ -1,0 +1,45 @@
+{
+  "name": "sonic-inspired-3d",
+  "version": "1.0.0",
+  "description": "Feature-rich 3D highway adventure browser game",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:gl": "BROWSER=./scripts/launch-chromium.sh vite",
+    "dev:brave": "BROWSER=./scripts/launch-brave.sh vite",
+    "dev:firefox": "BROWSER=./scripts/launch-firefox.sh vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+  },
+  "dependencies": {
+    "@react-three/drei": "^9.105.4",
+    "@react-three/fiber": "^8.16.6",
+    "@react-three/postprocessing": "^2.16.2",
+    "howl": "^0.2.0",
+    "howler": "^2.2.4",
+    "postprocessing": "^6.35.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "three": "^0.179.1",
+    "zustand": "^4.5.2"
+  },
+  "devDependencies": {
+    "@types/howler": "^2.2.13",
+    "@types/node": "^20.12.12",
+    "@types/react": "^18.3.2",
+    "@types/react-dom": "^18.3.0",
+    "@types/three": "^0.179.0",
+    "@typescript-eslint/eslint-plugin": "^7.8.0",
+    "@typescript-eslint/parser": "^7.8.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.19",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "eslint-plugin-react-refresh": "^0.4.7",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.3",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.11"
+  }
+}
