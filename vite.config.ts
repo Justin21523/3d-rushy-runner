@@ -23,8 +23,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           three_core: ['three'],
-          r3f_ecosystem: ['@react-three/fiber', '@react-three/drei'],
-          postprocessing_fx: ['@react-three/postprocessing', 'postprocessing'],
+          r3f_ecosystem: ['@react-three/fiber', '@react-three/drei', '@react-three/postprocessing', 'postprocessing'],
           state_management: ['zustand'],
         },
       },
@@ -36,7 +35,6 @@ export default defineConfig({
     hmr: {
       protocol: 'ws',
       host: 'localhost',
-      port: 3000,
     },
   },
 });

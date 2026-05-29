@@ -7,7 +7,7 @@ export class AbilitySystem {
 
   setController(ctrl: CharacterController) { this.controller = ctrl; }
 
-  tryActivate(slot: 'ability1'|'ability2'|'roll'|'doubleJump') {
+  tryActivate(slot: 'ability1'|'ability2'|'roll'|'doubleJump'|'magicBurst') {
     const store = useGameStore.getState();
     // map slot to ability id
     const slotMap: Record<string, string> = {
@@ -15,6 +15,7 @@ export class AbilitySystem {
       ability2: 'blastDash',
       roll: 'roll',
       doubleJump: 'doubleJump',
+      magicBurst: 'magicBurst',
     };
     const id = slotMap[slot];
     if (!id) return;

@@ -22,6 +22,7 @@ export class EnemyAI {
   private scene: THREE.Scene;
   private attackCooldown = 0;
   private attackInterval = 2; // seconds between attacks
+  private disposed = false;
   
   constructor(
     mesh: THREE.Mesh,
@@ -32,9 +33,18 @@ export class EnemyAI {
     this.patrolPoints = patrolPath;
     this.homePosition = patrolPath[0]?.clone() ?? new THREE.Vector3();
     this.scene = scene;
+    if (typeof window !== 'undefined') {
+      window.addEventListener('magic-burst', this.onMagicBurst as EventListener);
+    }
+  }
+
+  configure(stats: Partial<Pick<EnemyAI, 'speed' | 'chaseSpeed' | 'detectRange' | 'damage' | 'health'>>) {
+    Object.assign(this, stats);
   }
 
   update(delta: number) {
+    if (this.disposed) return;
+    this.attackCooldown = Math.max(0, this.attackCooldown - delta);
     const store = useGameStore.getState();
     const playerPos = new THREE.Vector3(
       store.player.position[0],
@@ -54,7 +64,7 @@ export class EnemyAI {
 
       case EnemyState.Chase:
         this.chase(delta, playerPos);
-        if (distToPlayer < this.attackRange) {
+        if (distToPlayer < this.attackRange && this.attackCooldown <= 0) {
           this.attackPlayer();
         }
         if (distToPlayer > this.detectRange * 1.5) {
@@ -69,9 +79,6 @@ export class EnemyAI {
         }
         break;
     }
-    if (typeof window !== 'undefined') {
-      window.addEventListener('magic-burst', this.onMagicBurst as EventListener);
-    }
   }
   
   private onMagicBurst = (e: CustomEvent) => {
@@ -83,6 +90,7 @@ export class EnemyAI {
   
   // 增加 takeDamage 方法
   public takeDamage(amount: number) {
+    if (this.disposed) return;
     this.health -= amount;
     if (this.health <= 0) {
       this.dispose();
@@ -122,11 +130,17 @@ export class EnemyAI {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('enemy-attack', { detail: this.damage }));
     }
+    this.attackCooldown = this.attackInterval;
     // 攻击后稍微后退
     this.state = EnemyState.Return;
   }
 
   dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('magic-burst', this.onMagicBurst as EventListener);
+    }
     // 释放资源
     this.mesh.geometry?.dispose();
     if (Array.isArray(this.mesh.material)) {

@@ -4,7 +4,7 @@ import { AudioManager } from './AudioManager';
 export function setupSoundEvents(audio: AudioManager) {
   if (typeof window === 'undefined') return;
 
-  const onEnemyAttack = (_e: Event) => {
+  const onEnemyAttack = () => {
     audio.play('hit');
   };
   const onPlayerDeath = () => {

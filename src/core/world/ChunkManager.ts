@@ -128,7 +128,11 @@ export class ChunkManager {
   releaseRing(m: THREE.Mesh) { this.ringPool.release(m); }
   acquireCore() { return this.corePool.acquire(); }
   releaseCore(m: THREE.Mesh) { this.corePool.release(m); }
-  acquireObstacle(_?: string) { return this.obstaclePool.acquire(); }
+  acquireObstacle(subtype?: string) {
+    const mesh = this.obstaclePool.acquire();
+    mesh.userData.subtype = subtype;
+    return mesh;
+  }
   releaseObstacle(m: THREE.Mesh) { this.obstaclePool.release(m); }
   acquireBoost() { return this.boostPool.acquire(); }
   releaseBoost(m: THREE.Mesh) { this.boostPool.release(m); }

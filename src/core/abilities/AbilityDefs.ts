@@ -41,7 +41,7 @@ const abilityDefs: Record<string, AbilityEffect> = {
   },
   magicBurst: {
     id: 'magicBurst', name: 'Magic Burst', defaultDuration: 0.5, defaultCooldown: 6,
-    onActivate: (controller, store) => {
+    onActivate: (controller) => {
       // create a shockwave that destroys nearby enemies (handled in collision)
       window.dispatchEvent(new CustomEvent('magic-burst', { detail: controller.pos }));
     },

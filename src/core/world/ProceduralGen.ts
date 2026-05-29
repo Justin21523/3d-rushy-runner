@@ -11,6 +11,10 @@ export interface InstanceDef {
   scale?: number;
   pathId?: string;          // for moving platform identification
   axis?: 'x' | 'y' | 'z';   // rotation axis for spinner
+  motionType?: 'linear';
+  motionParams?: { endX: number; speed: number };
+  rotationAxis?: 'x' | 'y' | 'z';
+  rotationSpeed?: number;
 }
 
 export interface ChunkData {

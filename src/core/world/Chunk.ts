@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import type { ChunkData } from './ProceduralGen';
 import type { ChunkManager } from './ChunkManager';
-import { MechanismSystem } from '../mechanisms/MechanismSystem';
-import { PlatformFactory, PlatformConfig, PlatformShape } from './PlatformFactory';
+import { MechanismSystem, MotionType } from '../mechanisms/MechanismSystem';
+import { PlatformFactory, PlatformShape } from './PlatformFactory';
+import { TerrainType } from './TerrainTypes';
 
 
 export class Chunk {
@@ -17,28 +18,6 @@ export class Chunk {
 
   build(data: ChunkData, manager: ChunkManager, mechanismSystem?: MechanismSystem) {
     // 建立道路平台網格
-    const roadMaterial = new THREE.MeshStandardMaterial({ color: '#5a5a5a', roughness: 0.7 });
-    // 在建立道路時：
-    const shape: PlatformShape = (data.terrainType === TerrainType.MovingPlatforms) ? 'moving' :
-                                  (data.terrainType === TerrainType.Hills) ? 'wedge' : 'box';
-    const platformMesh = PlatformFactory.create({
-      shape,
-      position: [mid.x, mid.y + 0.2, mid.z],
-      size: [curr.width, 0.5, length],
-      color: shape === 'moving' ? '#aaaaff' : '#5a5a5a',
-      motion: shape === 'moving' ? { type: MotionType.Linear, params: { start: prev.pos, end: curr.pos } } : undefined,
-      id: shape === 'moving' ? `moving_${this.id}_${i}` : undefined,
-    });
-    this.group.add(platformMesh);
-    // 如果是移動平台，則注冊到 mechanismSystem
-    if (shape === 'moving' && mechanismSystem) {
-      mechanismSystem.registerPlatform(`moving_${this.id}_${i}`, platformMesh, MotionType.Linear, {
-        start: prev.pos.clone().add(new THREE.Vector3(0, 0.2, 0)),
-        end: curr.pos.clone().add(new THREE.Vector3(0, 0.2, 0)),
-        speed: 0.5,
-      });
-    }
-    
     data.pathPoints.forEach((point, i) => {
       if (i === 0) return; // 需要兩個點才能建平台
       const prev = data.pathPoints[i - 1];
@@ -50,15 +29,29 @@ export class Chunk {
       const length = direction.length();
       const angle = Math.atan2(direction.x, direction.z);
 
-      // 建立平台塊
-      const geom = new THREE.BoxGeometry(curr.width, 0.4, length);
-      const mesh = new THREE.Mesh(geom, roadMaterial);
-      mesh.position.copy(mid);
-      mesh.position.y += 0.2; // 將平台稍微抬高，使頂面在 pos.y
+      const shape: PlatformShape =
+        data.terrainType === TerrainType.MovingPlatforms
+          ? 'moving'
+          : data.terrainType === TerrainType.Hills
+            ? 'wedge'
+            : 'box';
+      const mesh = PlatformFactory.create({
+        shape,
+        position: [mid.x, mid.y + 0.2, mid.z],
+        size: [curr.width, 0.4, length],
+        color: shape === 'moving' ? '#aaaaff' : '#5a5a5a',
+      });
       mesh.rotation.y = angle;
-      mesh.receiveShadow = true;
-      mesh.castShadow = true;
       mesh.userData = { type: 'road' };
+
+      if (shape === 'moving' && mechanismSystem) {
+        const platformId = `moving_${this.id}_${i}`;
+        mechanismSystem.registerPlatform(platformId, mesh, MotionType.Linear, {
+          start: prev.pos.clone().add(new THREE.Vector3(0, 0.2, 0)),
+          end: curr.pos.clone().add(new THREE.Vector3(0, 0.2, 0)),
+          speed: 0.5,
+        });
+      }
 
       this.group.add(mesh);
     });
@@ -79,7 +72,7 @@ export class Chunk {
             const start = new THREE.Vector3(inst.position[0], inst.position[1], inst.position[2]);
             const end = start.clone();
             end.x += 4; // move horizontally by 4 units
-            mechanismSystem.registerMovingPlatform(inst.pathId, plat, start, end, 0.8);
+            mechanismSystem.registerPlatform(inst.pathId, plat, MotionType.Linear, { start, end, speed: 0.8 });
           }
           mesh = plat;
           break;

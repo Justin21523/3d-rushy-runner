@@ -44,6 +44,7 @@ export interface GameState {
   setPhase: (p: GamePhase) => void;
   setPlayerState: (partial: Partial<PlayerState>) => void;
   setAbility: (id: string, updates: Partial<AbilityState>) => void;
+  unlockAbility: (id: string) => void;
   addRings: (n: number) => void;
   addEnergyCores: (n: number) => void;
   addShard: (id: string) => void;
@@ -67,6 +68,9 @@ const initialPlayer: PlayerState = {
 const initialAbilities: AbilityState[] = [
   { id: 'timeSlow', unlocked: true, cooldown: 5, currentCooldown: 0, level: 1, active: false, remainingDuration: 0 },
   { id: 'blastDash', unlocked: true, cooldown: 3, currentCooldown: 0, level: 1, active: false, remainingDuration: 0 },
+  { id: 'roll', unlocked: true, cooldown: 1, currentCooldown: 0, level: 1, active: false, remainingDuration: 0 },
+  { id: 'doubleJump', unlocked: true, cooldown: 0.5, currentCooldown: 0, level: 1, active: false, remainingDuration: 0 },
+  { id: 'magicBurst', unlocked: true, cooldown: 6, currentCooldown: 0, level: 1, active: false, remainingDuration: 0 },
   { id: 'gravityInvert', unlocked: false, cooldown: 8, currentCooldown: 0, level: 0, active: false, remainingDuration: 0 },
   { id: 'invincible', unlocked: false, cooldown: 15, currentCooldown: 0, level: 0, active: false, remainingDuration: 0 },
 ];
@@ -91,6 +95,12 @@ export const useGameStore = create<GameState>()(
         set((s) => ({
           abilities: s.abilities.map((a) => (a.id === id ? { ...a, ...updates } : a)),
         })),
+      unlockAbility: (id) =>
+        set((s) => ({
+          abilities: s.abilities.map((a) =>
+            a.id === id ? { ...a, unlocked: true, level: Math.max(a.level, 1) } : a
+          ),
+        })),
       addRings: (n) =>
         set((s) => ({
           collectibles: { ...s.collectibles, rings: s.collectibles.rings + n },
@@ -99,7 +109,7 @@ export const useGameStore = create<GameState>()(
         set((s) => ({
           collectibles: {
             ...s.collectibles,
-            energyCores: s.collectibles.energyCores + n,
+            energyCores: Math.max(0, s.collectibles.energyCores + n),
           },
         })),
       addShard: (id) =>

@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:gl": "BROWSER=./scripts/launch-chromium.sh vite",
-    "dev:brave": "BROWSER=./scripts/launch-brave.sh vite",
-    "dev:firefox": "BROWSER=./scripts/launch-firefox.sh vite",
+    "dev:gl": "BROWSER=$HOME/.local/bin/sonic-launch-chromium vite",
+    "dev:brave": "BROWSER=$HOME/.local/bin/sonic-launch-brave vite",
+    "dev:firefox": "BROWSER=$HOME/.local/bin/sonic-launch-firefox vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0"

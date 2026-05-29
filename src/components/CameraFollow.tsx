@@ -11,7 +11,7 @@ export function CameraFollow() {
   // 目标位置与朝向（缓动）
   const lookTarget = useRef(new THREE.Vector3());
 
-  useFrame((_state, _delta) => {
+  useFrame(() => {
     const playerPos = useGameStore.getState().player.position;
     const playerVec = new THREE.Vector3(playerPos[0], playerPos[1], playerPos[2]);
 

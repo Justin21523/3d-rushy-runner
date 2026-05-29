@@ -56,11 +56,12 @@ export class CollectibleManager {
         store.addEnergyCores(1);
         obj.parent?.remove(obj);
         break;
-      case 'shard':
+      case 'shard': {
         const shardId = obj.userData.id || 'unknown';
         store.addShard(shardId);
         obj.parent?.remove(obj);
         break;
+      }
     }
   }
 }

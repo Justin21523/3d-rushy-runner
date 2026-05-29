@@ -1,5 +1,4 @@
 import { CharacterController } from '../controller/CharacterController';
-import { useGameStore } from '../../stores/gameStore';
 
 export interface SuperAbility {
   id: string;

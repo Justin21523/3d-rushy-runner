@@ -1,12 +1,17 @@
 import { Html } from '@react-three/drei';
 import { useState } from 'react';
 import { useGameStore } from '../stores/gameStore';
-import { allSuperAbilities } from '../core/abilities/SuperAbilityDefs';
+
+const abilityShopItems: Record<string, { name: string; unlockCost: number }> = {
+  gravityInvert: { name: 'Gravity Invert', unlockCost: 2 },
+  invincible: { name: 'Invincible', unlockCost: 4 },
+};
 
 export function AbilityShop() {
   const [open, setOpen] = useState(false);
   const energyCores = useGameStore(s => s.collectibles.energyCores);
   const unlockAbility = useGameStore(s => s.unlockAbility);
+  const addEnergyCores = useGameStore(s => s.addEnergyCores);
   const abilities = useGameStore(s => s.abilities);
 
   if (!open) {
@@ -22,12 +27,23 @@ export function AbilityShop() {
       <div style={panelStyle}>
         <h2>Ability Shop</h2>
         <p>Cores: {energyCores}</p>
-        {abilities.filter(a => !a.unlocked).map(a => (
-          <div key={a.id} style={itemStyle}>
-            <span>{a.name} (cost: {a.unlockCost})</span>
-            <button onClick={() => unlockAbility(a.id)} disabled={energyCores < a.unlockCost}>Unlock</button>
-          </div>
-        ))}
+        {abilities.filter(a => !a.unlocked).map(a => {
+          const item = abilityShopItems[a.id] ?? { name: a.id, unlockCost: 1 };
+          return (
+            <div key={a.id} style={itemStyle}>
+              <span>{item.name} (cost: {item.unlockCost})</span>
+              <button
+                onClick={() => {
+                  addEnergyCores(-item.unlockCost);
+                  unlockAbility(a.id);
+                }}
+                disabled={energyCores < item.unlockCost}
+              >
+                Unlock
+              </button>
+            </div>
+          );
+        })}
         <button onClick={() => setOpen(false)}>Close</button>
       </div>
     </Html>

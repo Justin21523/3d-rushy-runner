@@ -8,7 +8,7 @@ export function CharacterPreview() {
   // Here we would apply equipped items to the model (e.g., change colors, attach meshes)
   // For now we render the base model with color overrides from store
   return (
-    <div style={{ width: 300, height: 400 }}>
+    <div style={{ width: 300, height: 400 }} data-equipped={JSON.stringify(equipped)}>
       <Canvas camera={{ position: [0, 1.5, 4], fov: 45 }}>
         <ambientLight intensity={0.8} />
         <directionalLight position={[5, 5, 5]} />

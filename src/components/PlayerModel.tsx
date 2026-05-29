@@ -1,8 +1,10 @@
-import { useRef, useEffect, useState, useLayoutEffect } from 'react';
+import { useRef, useEffect, useState, useLayoutEffect, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF, useAnimations } from '@react-three/drei';
 import * as THREE from 'three';
+import { clone } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { useGameStore } from '../stores/gameStore';
+import { useCustomizationStore } from '../stores/customizationStore';
 
 // Target visible character height (世界單位)。
 // 不論 GLB 原始尺寸為何，都會以包圍盒高度縮放到這個值。
@@ -32,9 +34,12 @@ function measureNormalization(root: THREE.Object3D): { scale: number; footOffset
 export function PlayerModel() {
   const wrapper = useRef<THREE.Group>(null!);
   const inner = useRef<THREE.Group>(null!);
-  const { scene, animations } = useGLTF('/assets/models/character.glb');
+  const { scene: sourceScene, animations } = useGLTF('/assets/models/character.glb');
+  const scene = useMemo(() => clone(sourceScene) as THREE.Group, [sourceScene]);
   // useAnimations 綁在 inner group 上，因為 scene 是 inner 的 child。
   const { actions, mixer } = useAnimations(animations, inner);
+  const equipped = useCustomizationStore((s) => s.equipped);
+  const outfits = useCustomizationStore((s) => s.outfits);
 
   // 量到的 scale 和腳底偏移；初始為 1 以避免閃爍時模型過大。
   const [norm, setNorm] = useState<{ scale: number; footOffset: number }>({ scale: 1, footOffset: 0 });
@@ -44,6 +49,24 @@ export function PlayerModel() {
     if (!inner.current) return;
     setNorm(measureNormalization(inner.current));
   }, [scene]);
+
+  useEffect(() => {
+    const equippedColors = Object.values(equipped)
+      .map((id) => outfits.find((item) => item.id === id)?.color)
+      .filter(Boolean) as string[];
+    const color = equippedColors[0];
+    if (!color) return;
+
+    scene.traverse((obj) => {
+      if (!(obj instanceof THREE.Mesh)) return;
+      const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
+      materials.forEach((material) => {
+        if (material instanceof THREE.MeshStandardMaterial) {
+          material.color.set(color);
+        }
+      });
+    });
+  }, [equipped, outfits, scene]);
 
   const action = useGameStore((s) => s.player.action);
   const prevAction = useRef<string>('idle');
@@ -79,7 +102,8 @@ export function PlayerModel() {
 // 如果沒有動畫，也可以用靜態模型：
 export function StaticPlayerModel() {
   const inner = useRef<THREE.Group>(null!);
-  const { scene } = useGLTF('/assets/models/character.glb');
+  const { scene: sourceScene } = useGLTF('/assets/models/character.glb');
+  const scene = useMemo(() => clone(sourceScene) as THREE.Group, [sourceScene]);
   const [norm, setNorm] = useState<{ scale: number; footOffset: number }>({ scale: 1, footOffset: 0 });
 
   useLayoutEffect(() => {

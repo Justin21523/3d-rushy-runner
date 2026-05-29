@@ -147,6 +147,7 @@ function GameLoop() {
 
     if (input.actions.has('ability1')) abilityRef.current.tryActivate('ability1');
     if (input.actions.has('ability2')) abilityRef.current.tryActivate('ability2');
+    if (input.actions.has('magicBurst')) abilityRef.current.tryActivate('magicBurst');
 
     controllerRef.current.update(delta, input);
     abilityRef.current.update(delta);
