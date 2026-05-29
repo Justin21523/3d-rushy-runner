@@ -1,6 +1,7 @@
 // src/stores/gameStore.ts
 
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 // Inline type definitions for store
 export interface PlayerState {
@@ -31,7 +32,7 @@ export interface CollectibleProgress {
   shards: string[];
 }
 
-export type GamePhase = 'menu' | 'playing' | 'paused' | 'gameover';
+export type GamePhase = 'menu' | 'playing' | 'paused' | 'gameover' | 'levelComplete';
 
 export interface GameState {
   phase: GamePhase;
@@ -47,51 +48,77 @@ export interface GameState {
   addEnergyCores: (n: number) => void;
   addShard: (id: string) => void;
   setTimeScale: (s: number) => void;
-  reset: () => void;
+  resetPlayer: () => void;
+
 }
 
-const initialState = {
-  phase: 'playing' as GamePhase,
-  currentZone: 'Neon Metro',
-  player: {
-    position: [0, 1, 0] as [number, number, number],
-    velocity: [0, 0, 0] as [number, number, number],
-    grounded: false,
-    hp: 100,
-    maxHp: 100,
-    rings: 0,
-    energy: 0,
-    action: 'idle',
-    invincible: true, // DEBUG: god mode on
-  },
-  abilities: [
-    { id: 'timeSlow', unlocked: true, cooldown: 5, currentCooldown: 0, level: 1, active: false, remainingDuration: 0 },
-    { id: 'blastDash', unlocked: true, cooldown: 3, currentCooldown: 0, level: 1, active: false, remainingDuration: 0 },
-    { id: 'gravityInvert', unlocked: false, cooldown: 8, currentCooldown: 0, level: 0, active: false, remainingDuration: 0 },
-    { id: 'invincible', unlocked: false, cooldown: 15, currentCooldown: 0, level: 0, active: false, remainingDuration: 0 },
-  ],
-  collectibles: {
-    rings: 0,
-    energyCores: 0,
-    shards: [],
-  },
-  timeScale: 1.0,
+const initialPlayer: PlayerState = {
+  position: [0, 1, 0],
+  velocity: [0, 0, 0],
+  grounded: false,
+  hp: 100,
+  maxHp: 100,
+  rings: 0,
+  energy: 0,
+  action: 'idle',
+  invincible: false,
 };
 
-export const useGameStore = create<GameState>((set) => ({
-  ...initialState,
+const initialAbilities: AbilityState[] = [
+  { id: 'timeSlow', unlocked: true, cooldown: 5, currentCooldown: 0, level: 1, active: false, remainingDuration: 0 },
+  { id: 'blastDash', unlocked: true, cooldown: 3, currentCooldown: 0, level: 1, active: false, remainingDuration: 0 },
+  { id: 'gravityInvert', unlocked: false, cooldown: 8, currentCooldown: 0, level: 0, active: false, remainingDuration: 0 },
+  { id: 'invincible', unlocked: false, cooldown: 15, currentCooldown: 0, level: 0, active: false, remainingDuration: 0 },
+];
 
-  setPhase: (phase) => set({ phase }),
-  setPlayerState: (partial) => set((s) => ({ player: { ...s.player, ...partial } })),
-  setAbility: (id, updates) => set((s) => ({
-    abilities: s.abilities.map((a) => (a.id === id ? { ...a, ...updates } : a)),
-  })),
-  addRings: (n) => set((s) => ({ collectibles: { ...s.collectibles, rings: s.collectibles.rings + n } })),
-  addEnergyCores: (n) => set((s) => ({ collectibles: { ...s.collectibles, energyCores: s.collectibles.energyCores + n } })),
-  addShard: (id) => set((s) => ({
-    collectibles: { ...s.collectibles, shards: [...s.collectibles.shards, id] },
-  })),
-  setTimeScale: (scale) => set({ timeScale: scale }),
-  reset: () => set(initialState),
-  
-}));
+export const useGameStore = create<GameState>()(
+  persist(
+    (set) => ({
+      phase: 'playing',
+      currentZone: 'Neon Metro',
+      player: { ...initialPlayer },
+      abilities: initialAbilities,
+      collectibles: {
+        rings: 0,
+        energyCores: 0,
+        shards: [],
+      },
+      timeScale: 1.0,
+      setPhase: (phase) => set({ phase }),
+      setPlayerState: (partial) =>
+        set((s) => ({ player: { ...s.player, ...partial } })),
+      setAbility: (id, updates) =>
+        set((s) => ({
+          abilities: s.abilities.map((a) => (a.id === id ? { ...a, ...updates } : a)),
+        })),
+      addRings: (n) =>
+        set((s) => ({
+          collectibles: { ...s.collectibles, rings: s.collectibles.rings + n },
+        })),
+      addEnergyCores: (n) =>
+        set((s) => ({
+          collectibles: {
+            ...s.collectibles,
+            energyCores: s.collectibles.energyCores + n,
+          },
+        })),
+      addShard: (id) =>
+        set((s) => ({
+          collectibles: {
+            ...s.collectibles,
+            shards: [...s.collectibles.shards, id],
+          },
+        })),
+      setTimeScale: (scale) => set({ timeScale: scale }),
+      resetPlayer: () =>
+        set({ player: { ...initialPlayer }, phase: 'playing' }),
+    }),
+    {
+      name: 'game-progress',
+      partialize: (state) => ({
+        collectibles: state.collectibles,
+        abilities: state.abilities,
+      }),
+    }
+  )
+);
