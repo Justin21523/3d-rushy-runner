@@ -16,16 +16,32 @@ export class CollectibleManager {
     const store = useGameStore.getState();
     const playerPos = this.playerMesh.position;
     const collectRadius = 1.5;
+    const NEAR_Z = 30;
 
-    // Traverse scene to find collectibles (tagged via userData)
-    this.scene.traverse((child) => {
-      if (!child.userData?.collectible) return;
-      const type = child.userData.type as string;
-      const dist = child.position.distanceTo(playerPos);
-      if (dist < collectRadius) {
-        this.collect(child, type, store);
+    // Collect first, mutate after — modifying scene during traverse is unsafe.
+    const toCollect: { obj: THREE.Object3D; type: string }[] = [];
+
+    // Iterate top-level scene children and skip far groups outright.
+    for (const child of this.scene.children) {
+      if ((child as THREE.Group).isGroup) {
+        let anyClose = false;
+        for (const inner of (child as THREE.Group).children) {
+          if (Math.abs(inner.position.z - playerPos.z) <= NEAR_Z) { anyClose = true; break; }
+        }
+        if (!anyClose) continue;
       }
-    });
+      child.traverse((obj) => {
+        if (!obj.userData?.collectible) return;
+        const dist = obj.position.distanceTo(playerPos);
+        if (dist < collectRadius) {
+          toCollect.push({ obj, type: obj.userData.type as string });
+        }
+      });
+    }
+
+    for (const { obj, type } of toCollect) {
+      this.collect(obj, type, store);
+    }
   }
 
   private collect(obj: THREE.Object3D, type: string, store: any) {

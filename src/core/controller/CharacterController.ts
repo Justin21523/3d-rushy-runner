@@ -25,6 +25,10 @@ export class CharacterController {
   // For Z-axis movement
   private moveDir: THREE.Vector3 = new THREE.Vector3();
   private invincibleTimer: number = 0;
+  private maxReachedZ: number = 0; // safety: position never goes backward
+  private hasDoubleJumped = false;
+  private canDoubleJump = true;
+  godMode = true; // DEBUG: disable all damage and death
 
   constructor(cfg: Partial<ControllerConfig> = {}, adv: Partial<AdvancedConfig> = {}) {
     this.config = { ...DEFAULT_MOVEMENT, ...cfg };
@@ -45,7 +49,7 @@ export class CharacterController {
   }
   
   applyDamage(amount: number) {
-    if (this.invincibleTimer > 0) return;
+    if (this.godMode || this.invincibleTimer > 0) return;
     const store = useGameStore.getState();
     store.setPlayerState({ hp: Math.max(0, store.player.hp - amount) });
     this.invincibleTimer = 1.5;
@@ -83,6 +87,13 @@ export class CharacterController {
     // Process slide input
     if (input.actions.has('slide') && !this.isDashing && this.grounded && !this.isSliding) {
       this.startSlide();
+    }
+    
+    if (input.actions.has('roll') && this.grounded && !this.isDashing && !this.isSliding) {
+      this.startRoll();
+    }
+    if (input.actions.has('doubleJump') && !this.grounded && !this.hasDoubleJumped && this.canDoubleJump) {
+      this.performDoubleJump();
     }
 
     // Movement
@@ -126,8 +137,25 @@ export class CharacterController {
     if (this.grounded && !this.isSliding) {
       this.moveDir.set(rawX, 0, 1);
     }
-
+    // 在接地時重置二段跳
+    if (this.grounded) {
+      this.hasDoubleJumped = false;
+      this.canDoubleJump = true;
+    }
     this.pushState(store);
+  }
+
+  private startRoll() {
+    this.isSliding = true;
+    this.slideTimer = 0.4;
+    this.vel.z += 15;
+    this.vel.y = 2;
+  }
+
+  private performDoubleJump() {
+    this.vel.y = this.config.jumpForce * 1.1;
+    this.hasDoubleJumped = true;
+    this.canDoubleJump = false; // will reset on ground
   }
 
   private feedQueue(input: InputFrame) {
@@ -191,8 +219,10 @@ export class CharacterController {
       this.grounded = false;
     }
 
-    // Z axis is unbounded (infinite forward runner — no wall)
+    // Z axis is unbounded — advance forward, never allow backward drift
     this.pos.z += this.vel.z * dt;
+    if (this.pos.z < this.maxReachedZ) this.pos.z = this.maxReachedZ;
+    else this.maxReachedZ = this.pos.z;
 
     // X axis: soft boundary matching road half-width
     const xBoundary = 12;
@@ -258,7 +288,7 @@ export class CharacterController {
       velocity: [this.vel.x, this.vel.y, this.vel.z],
       grounded: this.grounded,
       action: this.determineAction(),
-      invincible: this.invincibleTimer > 0,
+      invincible: this.godMode || this.invincibleTimer > 0,
     });
   }
 

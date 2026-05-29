@@ -1,5 +1,7 @@
 import { useGameStore } from '../../stores/gameStore';
 
+const GOD_MODE = true;
+
 export class DeathHandler {
   private respawnDelay = 2.0;
   private respawnTimer = 0;
@@ -7,8 +9,13 @@ export class DeathHandler {
   private lastCheckpoint: [number, number, number] = [0, 1, 0];
 
   update(delta: number) {
+    if (GOD_MODE) return; // infinite run — no death, no respawn
+
     const store = useGameStore.getState();
-    if (store.player.hp <= 0 && !this.isDead && !store.player.invincible) {
+    const phase = store.phase;
+    if (phase !== 'playing' && phase !== 'gameover') return;
+
+    if (phase === 'playing' && store.player.hp <= 0 && !this.isDead && !store.player.invincible) {
       this.die();
     }
 
@@ -24,7 +31,6 @@ export class DeathHandler {
     this.isDead = true;
     this.respawnTimer = this.respawnDelay;
     useGameStore.getState().setPhase('gameover');
-    // 播放死亡音效
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('player-death'));
     }
@@ -41,7 +47,6 @@ export class DeathHandler {
     });
     store.setPhase('playing');
     this.isDead = false;
-    // 播放重生音效
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('player-respawn'));
     }

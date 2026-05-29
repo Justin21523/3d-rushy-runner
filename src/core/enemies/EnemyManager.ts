@@ -1,50 +1,34 @@
 import * as THREE from 'three';
 import { EnemyAI } from './EnemyAI';
+import { EnemyTemplate, ENEMY_TYPES } from './EnemyTypes';
 import { ObjectPool } from '../engine/ObjectPool';
 
 export class EnemyManager {
   private scene: THREE.Scene;
   private enemies: EnemyAI[] = [];
-  private enemyPool: ObjectPool<THREE.Mesh>;
   private getPlayerZ: () => number;
-  private spawnDistance = 40; // 在玩家前方多远生成
-  private despawnDistance = 30; // 落后玩家多远销毁
+  private spawnDistance = 50;
+  private despawnDistance = 35;
 
   constructor(scene: THREE.Scene, getPlayerZ: () => number) {
     this.scene = scene;
     this.getPlayerZ = getPlayerZ;
-
-    this.enemyPool = new ObjectPool<THREE.Mesh>(() => {
-      const geom = new THREE.BoxGeometry(1, 1.6, 1);
-      const mat = new THREE.MeshStandardMaterial({ color: '#ff4444' });
-      const mesh = new THREE.Mesh(geom, mat);
-      mesh.userData = { type: 'enemy' };
-      return mesh;
-    }, 10);
   }
 
   update(delta: number) {
     const playerZ = this.getPlayerZ();
-
-    // 生成新敌人 (简单逻辑：每 3 个 chunk 生成一只)
     const currentChunk = Math.floor(playerZ / 40);
-    const shouldSpawn = currentChunk % 3 === 0 && currentChunk > 0;
-    // 为避免重复生成，检查是否已经有敌人在附近
-    const alreadySpawned = this.enemies.some(
-      (e) => Math.abs(e.mesh.position.z - playerZ) < 20
-    );
 
-    if (shouldSpawn && !alreadySpawned && this.enemies.length < 8) {
+    // spawn enemies based on chunk variety
+    if (currentChunk % 2 === 0 && this.enemies.length < 6) {
       this.spawnEnemy(playerZ + this.spawnDistance);
     }
 
-    // 更新所有敌人
-    this.enemies.forEach((enemy) => enemy.update(delta));
+    this.enemies.forEach(e => e.update(delta));
 
-    // 销毁落后太多的敌人
-    this.enemies = this.enemies.filter((enemy) => {
-      if (enemy.mesh.position.z < playerZ - this.despawnDistance) {
-        this.enemyPool.release(enemy.mesh);
+    this.enemies = this.enemies.filter(e => {
+      if (e.mesh.position.z < playerZ - this.despawnDistance) {
+        e.dispose();
         return false;
       }
       return true;
@@ -52,26 +36,26 @@ export class EnemyManager {
   }
 
   private spawnEnemy(z: number) {
-    const x = (Math.random() - 0.5) * 10; // 道路宽度内
-    const mesh = this.enemyPool.acquire();
+    const x = (Math.random() - 0.5) * 12;
+    // pick random type based on depth: early grunts, later mixed
+    let template: EnemyTemplate;
+    if (z < 300) template = ENEMY_TYPES.grub;
+    else if (z < 600) template = Math.random() < 0.3 ? ENEMY_TYPES.flyer : ENEMY_TYPES.grunt;
+    else template = Math.random() < 0.2 ? ENEMY_TYPES.turret : ENEMY_TYPES.grunt;
+
+    const mesh = new THREE.Mesh(template.geometry.clone(), template.material.clone());
     mesh.position.set(x, 0.8, z);
-
-    // 巡逻路径 (在生成点附近移动)
     const patrolPoints = [
-      new THREE.Vector3(x - 3, 0.8, z),
-      new THREE.Vector3(x + 3, 0.8, z),
-      new THREE.Vector3(x, 0.8, z + 4),
-      new THREE.Vector3(x, 0.8, z - 2),
+      new THREE.Vector3(x - template.patrolRadius, 0.8, z),
+      new THREE.Vector3(x + template.patrolRadius, 0.8, z),
     ];
-
-    const enemyAI = new EnemyAI(mesh, patrolPoints, this.scene);
+    const ai = new EnemyAI(mesh, patrolPoints, this.scene);
     this.scene.add(mesh);
-    this.enemies.push(enemyAI);
+    this.enemies.push(ai);
   }
 
   dispose() {
-    this.enemies.forEach((e) => e.dispose());
+    this.enemies.forEach(e => e.dispose());
     this.enemies = [];
-    this.enemyPool.disposeAll();
   }
 }

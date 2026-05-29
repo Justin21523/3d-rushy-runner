@@ -20,7 +20,9 @@ export class EnemyAI {
   health = 1; // 一击必杀（可调整）
   private homePosition: THREE.Vector3;
   private scene: THREE.Scene;
-
+  private attackCooldown = 0;
+  private attackInterval = 2; // seconds between attacks
+  
   constructor(
     mesh: THREE.Mesh,
     patrolPath: THREE.Vector3[],
@@ -66,6 +68,24 @@ export class EnemyAI {
           this.state = EnemyState.Patrol;
         }
         break;
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('magic-burst', this.onMagicBurst as EventListener);
+    }
+  }
+  
+  private onMagicBurst = (e: CustomEvent) => {
+    const burstPos = e.detail as THREE.Vector3;
+    if (this.mesh.position.distanceTo(burstPos) < 8) {
+      this.takeDamage(5);
+    }
+  };
+  
+  // 增加 takeDamage 方法
+  public takeDamage(amount: number) {
+    this.health -= amount;
+    if (this.health <= 0) {
+      this.dispose();
     }
   }
 

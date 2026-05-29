@@ -18,8 +18,24 @@ export class CollisionSystem {
   update() {
     const playerPos = this.playerPosRef();
     const store = useGameStore.getState();
+    const NEAR_Z = 30; // coarse Z-axis cull — skip whole subtrees that are far away
 
-    this.scene.traverse((obj) => {
+    // Walk only top-level scene children, skip far-away groups entirely.
+    // scene.traverse() would visit every descendant — expensive once many chunks are loaded.
+    for (const child of this.scene.children) {
+      // Cheap reject: any group whose closest point on Z is far from player is skipped.
+      // Chunks/backgrounds use world-space positions, not group transforms, so use a
+      // bounding-sphere approximation when available, otherwise fall through.
+      if ((child as THREE.Group).isGroup) {
+        // Compute bounding sphere lazily and reuse.
+        // Skip if every immediate child is clearly off-Z.
+        let anyClose = false;
+        for (const inner of (child as THREE.Group).children) {
+          if (Math.abs(inner.position.z - playerPos.z) <= NEAR_Z) { anyClose = true; break; }
+        }
+        if (!anyClose) continue;
+      }
+      child.traverse((obj) => {
       if (!obj.userData?.type) return;
       const type = obj.userData.type as string;
       const objPos = obj.position;
@@ -29,19 +45,14 @@ export class CollisionSystem {
       if (dist > 2.5) return; // 超过范围忽略
 
       if (type === 'obstacle') {
-        // 检查玩家是否太靠近 (近距离碰撞)
-        if (dist < 1.2) {
-          if (!store.player.invincible) {
-            store.setPlayerState({ hp: Math.max(0, store.player.hp - 10) });
-          }
-          // 短暂无敌？这里简单处理：退后一步并弹起
+        if (dist < 1.2 && !store.player.invincible) {
+          store.setPlayerState({ hp: Math.max(0, store.player.hp - 10) });
           this.controller.vel.y = 5;
           const pushDir = new THREE.Vector3()
             .subVectors(playerPos, objPos)
             .normalize();
           this.controller.vel.x += pushDir.x * 6;
           this.controller.vel.z += pushDir.z * 6;
-          // 避免连续伤害（将障碍物暂时禁用或设置冷却）
           obj.userData.lastHit = performance.now();
         }
       }
@@ -55,6 +66,7 @@ export class CollisionSystem {
           // 可以在 boostPad 上播放特效，但这里只做物理效果
         }
       }
-    });
+      });
+    }
   }
 }

@@ -1,10 +1,5 @@
-export type InputAction =
-  | 'jump'
-  | 'dash'
-  | 'slide'
-  | 'ability1'
-  | 'ability2'
-  | 'pause';
+// 并导出新动作类型（已在 InputActions 中扩展，这里略）
+export type InputAction = 'jump'|'dash'|'slide'|'ability1'|'ability2'|'pause'|'roll'|'doubleJump'|'magicBurst';
 
 export interface InputFrame {
   actions: Set<InputAction>;
@@ -25,7 +20,8 @@ export interface ControllerConfig {
 
 type KeyMap = Record<string, InputAction>;
 
-const DEFAULT_KEY_MAP: KeyMap = {
+// 在 DEFAULT_KEY_MAP 中添加新动作：
+const DEFAULT_KEY_MAP: Record<string, InputAction> = {
   Space: 'jump',
   ShiftLeft: 'dash',
   ControlLeft: 'slide',
@@ -34,7 +30,11 @@ const DEFAULT_KEY_MAP: KeyMap = {
   Escape: 'pause',
   ArrowUp: 'jump',
   ArrowDown: 'slide',
+  KeyR: 'roll',           // R 键翻滚
+  KeyF: 'doubleJump',     // F 键二段跳 (或攻击)
+  KeyX: 'magicBurst',     // X 魔法爆发
 };
+
 
 export class InputManager {
   private keysDown = new Set<string>();
