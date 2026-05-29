@@ -47,9 +47,14 @@ export class BackgroundManager {
   private unloadChunk(id: string) {
     const chunk = this.chunks.get(id);
     if (!chunk) return;
-    this.scene.remove(chunk.group);
-    chunk.dispose();
+    // Remove from tracking first so a dispose error can never re-enter on the next frame.
     this.chunks.delete(id);
+    this.scene.remove(chunk.group);
+    try {
+      chunk.dispose();
+    } catch (e) {
+      console.warn('BackgroundChunk dispose failed:', e);
+    }
   }
 
   dispose() {

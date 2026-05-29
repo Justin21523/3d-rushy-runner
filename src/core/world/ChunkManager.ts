@@ -3,6 +3,7 @@ import { ObjectPool } from '../engine/ObjectPool';
 import { Chunk } from './Chunk';
 import { generateChunkData } from './ProceduralGen';
 import { generateChunkPath, type ChunkPath } from './RoadGenerator';
+import { MechanismSystem } from '../mechanisms/MechanismSystem';
 
 const CHUNK_LENGTH = 40;
 const VIEW_AHEAD = 5;
@@ -15,44 +16,62 @@ export class ChunkManager {
   private corePool: ObjectPool<THREE.Mesh>;
   private obstaclePool: ObjectPool<THREE.Mesh>;
   private boostPool: ObjectPool<THREE.Mesh>;
+  private bouncePool: ObjectPool<THREE.Mesh>;
+  private movingPlatformPool: ObjectPool<THREE.Mesh>;
   private getPlayerPos: () => THREE.Vector3;
   private previousEndPoint = new THREE.Vector3(0, 0, 0);
+  public mechanismSystem: MechanismSystem;
 
-  constructor(scene: THREE.Scene, getPlayerPos: () => THREE.Vector3) {
+  constructor(scene: THREE.Scene, getPlayerPos: () => THREE.Vector3, mechanism: MechanismSystem) {
     this.scene = scene;
     this.getPlayerPos = getPlayerPos;
+    this.mechanismSystem = mechanism;
 
     this.ringPool = new ObjectPool<THREE.Mesh>(() => {
-      const geom = new THREE.TorusGeometry(0.4, 0.15, 8, 16);
-      const mat = new THREE.MeshStandardMaterial({ color: '#FFD700', emissive: '#332200' });
-      const mesh = new THREE.Mesh(geom, mat);
+      const g = new THREE.TorusGeometry(0.4, 0.15, 8, 16);
+      const m = new THREE.MeshStandardMaterial({ color: '#FFD700', emissive: '#332200' });
+      const mesh = new THREE.Mesh(g, m);
       mesh.userData = { collectible: true, type: 'ring' };
       return mesh;
     }, 60);
 
     this.corePool = new ObjectPool<THREE.Mesh>(() => {
-      const geom = new THREE.BoxGeometry(0.8, 0.8, 0.8);
-      const mat = new THREE.MeshStandardMaterial({ color: '#00ffff', emissive: '#003333' });
-      const mesh = new THREE.Mesh(geom, mat);
+      const g = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+      const m = new THREE.MeshStandardMaterial({ color: '#00ffff', emissive: '#003333' });
+      const mesh = new THREE.Mesh(g, m);
       mesh.userData = { collectible: true, type: 'energyCore' };
       return mesh;
     }, 20);
 
     this.obstaclePool = new ObjectPool<THREE.Mesh>(() => {
-      const geom = new THREE.ConeGeometry(0.5, 1.5, 8);
-      const mat = new THREE.MeshStandardMaterial({ color: '#ff4444' });
-      const mesh = new THREE.Mesh(geom, mat);
+      const g = new THREE.ConeGeometry(0.5, 1.5, 8);
+      const m = new THREE.MeshStandardMaterial({ color: '#ff4444' });
+      const mesh = new THREE.Mesh(g, m);
       mesh.userData = { type: 'obstacle' };
       return mesh;
     }, 40);
 
     this.boostPool = new ObjectPool<THREE.Mesh>(() => {
-      const geom = new THREE.BoxGeometry(1.8, 0.2, 1.8);
-      const mat = new THREE.MeshStandardMaterial({ color: '#44ff44', emissive: '#004400' });
-      const mesh = new THREE.Mesh(geom, mat);
+      const g = new THREE.BoxGeometry(1.8, 0.2, 1.8);
+      const m = new THREE.MeshStandardMaterial({ color: '#44ff44', emissive: '#004400' });
+      const mesh = new THREE.Mesh(g, m);
       mesh.userData = { type: 'boostPad' };
       return mesh;
     }, 30);
+
+    this.bouncePool = new ObjectPool<THREE.Mesh>(() => {
+      const g = new THREE.CylinderGeometry(1, 1, 0.3, 8);
+      const m = new THREE.MeshStandardMaterial({ color: '#ff8844', emissive: '#331100' });
+      const mesh = new THREE.Mesh(g, m);
+      mesh.userData = { type: 'bouncePad' };
+      return mesh;
+    }, 15);
+
+    this.movingPlatformPool = new ObjectPool<THREE.Mesh>(() => {
+      const g = new THREE.BoxGeometry(2, 0.3, 2);
+      const m = new THREE.MeshStandardMaterial({ color: '#aaaaff' });
+      return new THREE.Mesh(g, m);
+    }, 10);
   }
 
   /** 每幀呼叫，根據玩家位置管理 Chunk */
@@ -97,6 +116,7 @@ export class ChunkManager {
   private unloadChunk(id: string) {
     const chunk = this.chunks.get(id);
     if (!chunk) return;
+    // remove moving platforms from mechanism system
     chunk.releaseObjects(this);
     this.scene.remove(chunk.group);
     chunk.dispose();
@@ -104,14 +124,18 @@ export class ChunkManager {
   }
 
   // Pool 存取方法
-  acquireRing(): THREE.Mesh { return this.ringPool.acquire(); }
+  acquireRing() { return this.ringPool.acquire(); }
   releaseRing(m: THREE.Mesh) { this.ringPool.release(m); }
-  acquireCore(): THREE.Mesh { return this.corePool.acquire(); }
+  acquireCore() { return this.corePool.acquire(); }
   releaseCore(m: THREE.Mesh) { this.corePool.release(m); }
-  acquireObstacle(_subtype?: string): THREE.Mesh { return this.obstaclePool.acquire(); }
+  acquireObstacle(_?: string) { return this.obstaclePool.acquire(); }
   releaseObstacle(m: THREE.Mesh) { this.obstaclePool.release(m); }
-  acquireBoost(): THREE.Mesh { return this.boostPool.acquire(); }
+  acquireBoost() { return this.boostPool.acquire(); }
   releaseBoost(m: THREE.Mesh) { this.boostPool.release(m); }
+  acquireBouncePad() { return this.bouncePool.acquire(); }
+  releaseBouncePad(m: THREE.Mesh) { this.bouncePool.release(m); }
+  acquireMovingPlatform() { return this.movingPlatformPool.acquire(); }
+  releaseMovingPlatform(m: THREE.Mesh) { this.movingPlatformPool.release(m); }
 
   dispose() {
     this.chunks.forEach((_, id) => this.unloadChunk(id));
@@ -119,5 +143,7 @@ export class ChunkManager {
     this.corePool.disposeAll();
     this.obstaclePool.disposeAll();
     this.boostPool.disposeAll();
+    this.bouncePool.disposeAll();
+    this.movingPlatformPool.disposeAll();
   }
 }

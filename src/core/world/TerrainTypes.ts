@@ -5,6 +5,9 @@ export enum TerrainType {
   CoinRush = 'coin_rush',
   SpeedBoost = 'speed_boost',
   Mixed = 'mixed',
+  BounceWorld = 'bounce_world',        // 大量弹跳板
+  MovingPlatforms = 'moving_platforms', // 移动平台区域
+  SpinnerAlley = 'spinner_alley',      // 旋转障碍物
 }
 
 export interface TerrainConfig {
@@ -15,75 +18,62 @@ export interface TerrainConfig {
   energyChance: number;
   shardChance: number;
   boostChance: number;
+  bounceChance: number;          // 新增：弹跳板机率
+  movingPlatformCount: number;   // 新增：移动平台数量
+  spinnerCount: number;          // 新增：旋转障碍物数量
   platformCount: number;      // number of floating platforms to generate
 }
 
 export const TERRAIN_CONFIGS: Record<TerrainType, TerrainConfig> = {
   [TerrainType.Flat]: {
-    type: TerrainType.Flat,
-    weight: 30,
-    obstacleChance: 0.1,
-    ringChance: 0.3,
-    energyChance: 0.05,
-    shardChance: 0.02,
-    boostChance: 0.05,
-    platformCount: 0,
+    type: TerrainType.Flat, weight: 25,
+    obstacleChance: 0.1, ringChance: 0.3, energyChance: 0.05, shardChance: 0.02,
+    boostChance: 0.05, bounceChance: 0.0, movingPlatformCount: 0, spinnerCount: 0, platformCount: 0,
   },
   [TerrainType.Hills]: {
-    type: TerrainType.Hills,
-    weight: 20,
-    obstacleChance: 0.2,
-    ringChance: 0.2,
-    energyChance: 0.05,
-    shardChance: 0.03,
-    boostChance: 0.1,
-    platformCount: 3,
+    type: TerrainType.Hills, weight: 15,
+    obstacleChance: 0.2, ringChance: 0.2, energyChance: 0.05, shardChance: 0.03,
+    boostChance: 0.1, bounceChance: 0.05, movingPlatformCount: 0, spinnerCount: 0, platformCount: 3,
   },
   [TerrainType.ObstacleDense]: {
-    type: TerrainType.ObstacleDense,
-    weight: 25,
-    obstacleChance: 0.6,
-    ringChance: 0.1,
-    energyChance: 0.02,
-    shardChance: 0.01,
-    boostChance: 0.0,
-    platformCount: 1,
+    type: TerrainType.ObstacleDense, weight: 15,
+    obstacleChance: 0.6, ringChance: 0.1, energyChance: 0.02, shardChance: 0.01,
+    boostChance: 0.0, bounceChance: 0.0, movingPlatformCount: 0, spinnerCount: 0, platformCount: 1,
   },
   [TerrainType.CoinRush]: {
-    type: TerrainType.CoinRush,
-    weight: 15,
-    obstacleChance: 0.0,
-    ringChance: 0.8,
-    energyChance: 0.2,
-    shardChance: 0.05,
-    boostChance: 0.0,
-    platformCount: 0,
+    type: TerrainType.CoinRush, weight: 10,
+    obstacleChance: 0.0, ringChance: 0.8, energyChance: 0.2, shardChance: 0.05,
+    boostChance: 0.0, bounceChance: 0.0, movingPlatformCount: 0, spinnerCount: 0, platformCount: 0,
   },
   [TerrainType.SpeedBoost]: {
-    type: TerrainType.SpeedBoost,
-    weight: 10,
-    obstacleChance: 0.1,
-    ringChance: 0.2,
-    energyChance: 0.05,
-    shardChance: 0.0,
-    boostChance: 0.4,
-    platformCount: 0,
+    type: TerrainType.SpeedBoost, weight: 10,
+    obstacleChance: 0.1, ringChance: 0.2, energyChance: 0.05, shardChance: 0.0,
+    boostChance: 0.4, bounceChance: 0.0, movingPlatformCount: 0, spinnerCount: 0, platformCount: 0,
   },
   [TerrainType.Mixed]: {
-    type: TerrainType.Mixed,
-    weight: 20,
-    obstacleChance: 0.3,
-    ringChance: 0.3,
-    energyChance: 0.05,
-    shardChance: 0.03,
-    boostChance: 0.15,
-    platformCount: 2,
+    type: TerrainType.Mixed, weight: 10,
+    obstacleChance: 0.3, ringChance: 0.3, energyChance: 0.05, shardChance: 0.03,
+    boostChance: 0.15, bounceChance: 0.1, movingPlatformCount: 1, spinnerCount: 0, platformCount: 2,
+  },
+  [TerrainType.BounceWorld]: {
+    type: TerrainType.BounceWorld, weight: 5,
+    obstacleChance: 0.0, ringChance: 0.2, energyChance: 0.1, shardChance: 0.0,
+    boostChance: 0.0, bounceChance: 0.6, movingPlatformCount: 0, spinnerCount: 0, platformCount: 0,
+  },
+  [TerrainType.MovingPlatforms]: {
+    type: TerrainType.MovingPlatforms, weight: 5,
+    obstacleChance: 0.1, ringChance: 0.3, energyChance: 0.05, shardChance: 0.0,
+    boostChance: 0.0, bounceChance: 0.0, movingPlatformCount: 4, spinnerCount: 0, platformCount: 0,
+  },
+  [TerrainType.SpinnerAlley]: {
+    type: TerrainType.SpinnerAlley, weight: 5,
+    obstacleChance: 0.2, ringChance: 0.2, energyChance: 0.0, shardChance: 0.0,
+    boostChance: 0.0, bounceChance: 0.0, movingPlatformCount: 0, spinnerCount: 3, platformCount: 0,
   },
 };
 
-/** Pick a terrain type based on weights */
 export function pickTerrainType(): TerrainType {
-  const total = Object.values(TERRAIN_CONFIGS).reduce((sum, c) => sum + c.weight, 0);
+  const total = Object.values(TERRAIN_CONFIGS).reduce((s, c) => s + c.weight, 0);
   let r = Math.random() * total;
   for (const config of Object.values(TERRAIN_CONFIGS)) {
     r -= config.weight;
