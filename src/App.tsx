@@ -29,53 +29,6 @@ import { AbilityShop } from './ui/AbilityShop';
 import { CharacterPreview } from './ui/CharacterPreview'
 import { CustomizationPanel } from './ui/CustomizationPanel';
 
-// ── WebGL availability check ──
-function checkWebGL(): string | null {
-  try {
-    const canvas = document.createElement('canvas');
-    const ctx =
-      canvas.getContext('webgl2') ||
-      canvas.getContext('webgl') ||
-      canvas.getContext('experimental-webgl');
-    if (!ctx) return 'WebGL not supported in this browser.';
-    return null;
-  } catch {
-    return 'Error testing WebGL.';
-  }
-}
-
-// ── Error boundary for Canvas crashes ──
-interface EBState { error: Error | null }
-class WebGLErrorBoundary extends Component<{ children: ReactNode }, EBState> {
-  state: EBState = { error: null };
-  static getDerivedStateFromError(e: Error): EBState { return { error: e }; }
-  componentDidCatch(e: Error, info: ErrorInfo) { console.error('Canvas error:', e, info); }
-  render() {
-    if (this.state.error) {
-      return (
-        <div style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          height: '100vh', background: '#111', color: '#eee', fontFamily: 'monospace', padding: 40, gap: 16,
-        }}>
-          <h2 style={{ color: '#ff4444' }}>WebGL Context Error</h2>
-          <p style={{ maxWidth: 600, textAlign: 'center', color: '#aaa' }}>
-            {this.state.error.message}
-          </p>
-          <p style={{ maxWidth: 600, textAlign: 'center', color: '#888', fontSize: 13 }}>
-            Chrome is trying to use the AMD GPU instead of NVIDIA.<br />
-            Run the dev server with <code style={{ color: '#0af' }}>npm run dev:gl</code> or{' '}
-            <code style={{ color: '#0af' }}>npm run dev:firefox</code>, or launch Chrome manually with:
-          </p>
-          <pre style={{ background: '#222', padding: '12px 20px', borderRadius: 6, fontSize: 12, color: '#0f0' }}>
-            chromium-browser --use-angle=gl --ignore-gpu-blocklist http://localhost:5173
-          </pre>
-        </div>
-      );
-    }
-    return this.state.error === null ? this.props.children : null;
-  }
-}
-
 
 function GameLoop() {
   const inputRef = useRef<InputManager>(null!);
@@ -181,7 +134,6 @@ function GameLoop() {
       <PostProcessingPipeline />
       <PerformanceScaler />
       <AbilityShop />
-      <CharacterPreview /> 
       <CustomizationPanel />
       <HUD />
       <PauseMenu />
@@ -191,37 +143,19 @@ function GameLoop() {
 }
 
 export default function App() {
-  const webglError = checkWebGL();
-  if (webglError) {
-    return (
-      <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        height: '100vh', background: '#111', color: '#eee', fontFamily: 'monospace', padding: 40, gap: 16,
-      }}>
-        <h2 style={{ color: '#ff4444' }}>WebGL Not Available</h2>
-        <p style={{ maxWidth: 600, textAlign: 'center', color: '#aaa' }}>{webglError}</p>
-        <p style={{ maxWidth: 600, textAlign: 'center', color: '#888', fontSize: 13 }}>
-          Try <code style={{ color: '#0af' }}>npm run dev:gl</code> (Chromium with NVIDIA flags) or{' '}
-          <code style={{ color: '#0af' }}>npm run dev:firefox</code>
-        </p>
-        <pre style={{ background: '#222', padding: '12px 20px', borderRadius: 6, fontSize: 12, color: '#0f0' }}>
-          chromium-browser --use-angle=gl --ignore-gpu-blocklist http://localhost:5173
-        </pre>
-      </div>
-    );
-  }
-
+  
   return (
-    <WebGLErrorBoundary>
-      <div style={{ width: '100vw', height: '100vh' }}>
-        <Canvas
-          shadows
-          camera={{ position: [0, 5, 18], fov: 60 }}
-          gl={{ failIfMajorPerformanceCaveat: false, antialias: true }}
-        >
-          <GameLoop />
-        </Canvas>
+    <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
+      <Canvas
+        shadows
+        camera={{ position: [0, 6, -12], fov: 60 }}
+        gl={{ failIfMajorPerformanceCaveat: false, antialias: true }}
+      >
+        <GameLoop />
+      </Canvas>
+      <div style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}>
+        <CharacterPreview />
       </div>
-    </WebGLErrorBoundary>
+    </div>
   );
 }
