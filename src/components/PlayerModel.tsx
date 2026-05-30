@@ -8,7 +8,7 @@ import { useCustomizationStore } from '../stores/customizationStore';
 
 // Target visible character height (世界單位)。
 // 不論 GLB 原始尺寸為何，都會以包圍盒高度縮放到這個值。
-const TARGET_CHARACTER_HEIGHT = 1.6;
+const TARGET_CHARACTER_HEIGHT = 80;
 
 /**
  * 量測 root 在世界座標下的包圍盒，回傳統一縮放係數和腳底偏移。
