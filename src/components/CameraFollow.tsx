@@ -7,7 +7,7 @@ import { useRef } from 'react';
 
 export function CameraFollow() {
   const { camera } = useThree();
-  const currentPos = useRef(new THREE.Vector3(0, 5, 18));
+  const currentPos = useRef(new THREE.Vector3(0, 6, -12));
   // 目标位置与朝向（缓动）
   const lookTarget = useRef(new THREE.Vector3());
 
@@ -23,16 +23,16 @@ export function CameraFollow() {
     );
 
     // 平滑跟随
-    currentPos.current.lerp(idealPos, 0.08);
+    currentPos.current.lerp(idealPos, 0.12);
     camera.position.copy(currentPos.current);
 
     // 看着玩家前方一点
     const lookAtPoint = new THREE.Vector3(
       playerVec.x,
-      playerVec.y + 1.2,
-      playerVec.z + 2
+      playerVec.y + 1.5,
+      playerVec.z + 4
     );
-    lookTarget.current.lerp(lookAtPoint, 0.1);
+    lookTarget.current.lerp(lookAtPoint, 0.12);
     camera.lookAt(lookTarget.current);
   });
 

@@ -101,7 +101,7 @@ export class CharacterController {
     // Auto-run forward at base speed; W/S adjusts speed, left/right steers
     const autoRunSpeed = this.config.walkSpeed;
     const rawZBoost = input.rawAxes.y; // W adds speed, S brakes
-    let targetVelX = rawX * this.config.walkSpeed;
+    let targetVelX = -rawX * this.config.walkSpeed;
     let targetVelZ = autoRunSpeed + rawZBoost * (this.config.walkSpeed * 0.5);
 
     // Apply air control factor
@@ -114,7 +114,7 @@ export class CharacterController {
     if (this.isSliding) {
       const slideDir = this.moveDir.clone().normalize();
       if (slideDir.length() === 0) slideDir.set(0, 0, 1);
-      targetVelX = slideDir.x * this.advanced.slideSpeed;
+      targetVelX = -slideDir.x * this.advanced.slideSpeed;
       targetVelZ = Math.max(autoRunSpeed, slideDir.z * this.advanced.slideSpeed);
     }
 
@@ -135,7 +135,7 @@ export class CharacterController {
 
     // Update movement direction for slide reference (always forward + lateral)
     if (this.grounded && !this.isSliding) {
-      this.moveDir.set(rawX, 0, 1);
+      this.moveDir.set(-rawX, 0, 1);
     }
     // 在接地時重置二段跳
     if (this.grounded) {
