@@ -1,6 +1,6 @@
 # 3D Rushy Runner
 
-![Game Screenshot](./public/screenshot.png)
+![Game Screenshot](public/screenshot.png)
 
 A high-speed, Sonic-inspired 3D infinite runner built with **React**, **Three.js**, and **Zustand**. Experience fast-paced highway adventure with advanced movement mechanics, procedural level generation, and a classic ring-based health system.
 
