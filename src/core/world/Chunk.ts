@@ -108,6 +108,19 @@ export class Chunk {
     });
   }
 
+  /**
+   * Stop tracking a pooled object that has been collected mid-life, so that
+   * releaseObjects() won't release it a second time (double-free into the pool).
+   * Returns true if the mesh belonged to this chunk.
+   */
+  untrack(mesh: THREE.Object3D): boolean {
+    const idx = this.objects.findIndex((o) => o.mesh === mesh);
+    if (idx === -1) return false;
+    this.objects.splice(idx, 1);
+    this.group.remove(mesh);
+    return true;
+  }
+
   releaseObjects(manager: ChunkManager) {
     this.objects.forEach(({ mesh, type }) => {
       // Remove from group first so Chunk.dispose() doesn't also destroy pooled meshes

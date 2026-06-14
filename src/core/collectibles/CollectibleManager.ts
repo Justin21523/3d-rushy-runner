@@ -2,14 +2,18 @@
 
 import * as THREE from 'three';
 import { useGameStore } from '../../stores/gameStore';
+import { ChunkManager } from '../world/ChunkManager';
+import { SCORE_RING, SCORE_CORE } from '../combat/CombatSettings';
 
 export class CollectibleManager {
   private scene: THREE.Scene;
   private playerMesh: THREE.Object3D;
+  private chunkManager: ChunkManager;
 
-  constructor(scene: THREE.Scene, playerMesh: THREE.Object3D) {
+  constructor(scene: THREE.Scene, playerMesh: THREE.Object3D, chunkManager: ChunkManager) {
     this.scene = scene;
     this.playerMesh = playerMesh;
+    this.chunkManager = chunkManager;
   }
 
   update() {
@@ -48,19 +52,25 @@ export class CollectibleManager {
     switch (type) {
       case 'ring':
         store.addRings(1);
-        // remove from scene (parent might be chunk group)
-        obj.parent?.remove(obj);
-        // optional: add back to pool handled by ChunkManager
+        store.addScore(SCORE_RING);
+        store.addCombo();
+        this.chunkManager.releaseCollectible(obj as THREE.Mesh, 'ring');
         break;
       case 'energyCore':
         store.addEnergyCores(1);
-        obj.parent?.remove(obj);
+        store.addScore(SCORE_CORE);
+        this.chunkManager.releaseCollectible(obj as THREE.Mesh, 'energyCore');
         break;
       case 'shard': {
         const shardId = obj.userData.id || 'unknown';
         store.addShard(shardId);
+        // shards are not pooled — remove and dispose inline.
         obj.parent?.remove(obj);
-        break;
+        if (obj instanceof THREE.Mesh) {
+          obj.geometry?.dispose();
+          (obj.material as THREE.Material)?.dispose();
+        }
+        return;
       }
     }
   }

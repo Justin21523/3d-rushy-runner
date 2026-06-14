@@ -1,8 +1,7 @@
 // src/App.tsx (Updated – integrates all systems)
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { useRef, useEffect, Component } from 'react';
-import type { ReactNode, ErrorInfo } from 'react';
+import { useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { useGameStore } from './stores/gameStore';
 import { InputManager } from './core/input/InputManager';
@@ -57,10 +56,10 @@ function GameLoop() {
     chunkManagerRef.current = new ChunkManager(scene, () => controllerRef.current.pos, mechanismRef.current);
     backgroundManagerRef.current = new BackgroundManager(scene, () => controllerRef.current.pos.z);
     collisionRef.current = new CollisionSystem(scene, controllerRef.current, () => controllerRef.current.pos);
-    enemyManagerRef.current = new EnemyManager(scene, () => controllerRef.current.pos.z);
+    enemyManagerRef.current = new EnemyManager(scene, () => controllerRef.current.pos.z, controllerRef.current);
     deathHandlerRef.current = new DeathHandler();
     levelManagerRef.current = new LevelManager(() => controllerRef.current.pos.z);
-    collectibleManagerRef.current = new CollectibleManager(scene, playerGroupRef.current);
+    collectibleManagerRef.current = new CollectibleManager(scene, playerGroupRef.current, chunkManagerRef.current);
     audioManagerRef.current = new AudioManager();
     const cleanupSound = setupSoundEvents(audioManagerRef.current);
     inputRef.current.start();
@@ -75,12 +74,30 @@ function GameLoop() {
     };
     window.addEventListener('keydown', onKey);
 
+    // Enemy melee hits route through this event; apply to the player controller.
+    // Damage amount is ignored — the ring-shield model is hit-based, not HP-based.
+    const onEnemyAttack = () => {
+      controllerRef.current?.applyDamage();
+    };
+    window.addEventListener('enemy-attack', onEnemyAttack);
+
+    // Advance the respawn checkpoint each time the player clears a stage.
+    const onStageChange = (e: Event) => {
+      const detail = (e as CustomEvent<{ z: number }>).detail;
+      if (detail && typeof detail.z === 'number') {
+        deathHandlerRef.current?.setCheckpoint([0, 2, detail.z]);
+      }
+    };
+    window.addEventListener('stage-change', onStageChange);
+
     return () => {
       inputRef.current?.dispose();
       chunkManagerRef.current?.dispose();
       backgroundManagerRef.current?.dispose();
       enemyManagerRef.current?.dispose();
       window.removeEventListener('keydown', onKey);
+      window.removeEventListener('enemy-attack', onEnemyAttack);
+      window.removeEventListener('stage-change', onStageChange);
       cleanupSound?.();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -111,6 +128,13 @@ function GameLoop() {
     levelManagerRef.current?.update();
     mechanismRef.current?.update(delta);
     collectibleManagerRef.current?.update();
+
+    // Run-session bookkeeping (score timer / combo decay / distance).
+    if (phase === 'playing') {
+      const store = useGameStore.getState();
+      store.tickRun(delta);
+      store.setDistance(controllerRef.current.maxReachedZ);
+    }
 
     // 同步模型位置
     const pos = useGameStore.getState().player.position;

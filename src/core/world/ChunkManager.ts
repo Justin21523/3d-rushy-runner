@@ -141,6 +141,26 @@ export class ChunkManager {
   acquireMovingPlatform() { return this.movingPlatformPool.acquire(); }
   releaseMovingPlatform(m: THREE.Mesh) { this.movingPlatformPool.release(m); }
 
+  /**
+   * Called when a pooled collectible (ring / energy core) is picked up.
+   * Removes it from its owning chunk's tracking list and returns it to the
+   * correct pool, so it is not released a second time when the chunk unloads.
+   */
+  releaseCollectible(mesh: THREE.Mesh, type: string) {
+    const parent = mesh.parent;
+    if (parent) {
+      for (const chunk of this.chunks.values()) {
+        if (chunk.group === parent) {
+          chunk.untrack(mesh);
+          break;
+        }
+      }
+      parent.remove(mesh);
+    }
+    if (type === 'ring') this.releaseRing(mesh);
+    else if (type === 'energyCore') this.releaseCore(mesh);
+  }
+
   dispose() {
     this.chunks.forEach((_, id) => this.unloadChunk(id));
     this.ringPool.disposeAll();

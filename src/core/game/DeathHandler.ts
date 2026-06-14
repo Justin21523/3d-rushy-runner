@@ -1,6 +1,6 @@
 import { useGameStore } from '../../stores/gameStore';
 
-const GOD_MODE = true;
+const GOD_MODE = false;
 
 export class DeathHandler {
   private respawnDelay = 2.0;
@@ -30,7 +30,10 @@ export class DeathHandler {
   private die() {
     this.isDead = true;
     this.respawnTimer = this.respawnDelay;
-    useGameStore.getState().setPhase('gameover');
+    const store = useGameStore.getState();
+    store.commitRecords();
+    useGameStore.setState((s) => ({ runStats: { ...s.runStats, deaths: s.runStats.deaths + 1 } }));
+    store.setPhase('gameover');
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('player-death'));
     }
@@ -45,6 +48,7 @@ export class DeathHandler {
       grounded: false,
       invincible: true,
     });
+    store.resetCombo();
     store.setPhase('playing');
     this.isDead = false;
     if (typeof window !== 'undefined') {

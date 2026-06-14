@@ -18,11 +18,13 @@ export class EnemyAI {
   attackRange = 2;
   damage = 15;
   health = 1; // 一击必杀（可调整）
+  halfHeight = 0.8; // vertical half-extent, used for stomp-from-above detection
+  isBoss = false;
   private homePosition: THREE.Vector3;
   private scene: THREE.Scene;
   private attackCooldown = 0;
   private attackInterval = 2; // seconds between attacks
-  private disposed = false;
+  disposed = false;
   
   constructor(
     mesh: THREE.Mesh,
@@ -38,7 +40,7 @@ export class EnemyAI {
     }
   }
 
-  configure(stats: Partial<Pick<EnemyAI, 'speed' | 'chaseSpeed' | 'detectRange' | 'damage' | 'health'>>) {
+  configure(stats: Partial<Pick<EnemyAI, 'speed' | 'chaseSpeed' | 'detectRange' | 'damage' | 'health' | 'halfHeight' | 'isBoss'>>) {
     Object.assign(this, stats);
   }
 

@@ -2,6 +2,8 @@
 
 import { Html } from '@react-three/drei';
 import { useGameStore } from '../stores/gameStore';
+import { usePerformanceStore } from '../stores/performanceStore';
+import { COMBO_WINDOW } from '../core/combat/CombatSettings';
 
 export function HUD() {
   const rings = useGameStore((s) => s.collectibles.rings);
@@ -9,9 +11,13 @@ export function HUD() {
   const shards = useGameStore((s) => s.collectibles.shards.length);
   const player = useGameStore((s) => s.player);
   const abilities = useGameStore((s) => s.abilities);
-  
+  const runStats = useGameStore((s) => s.runStats);
+  const quality = usePerformanceStore((s) => s.quality);
+
   const invincible = player.invincible;
   const hpPercent = (player.hp / player.maxHp) * 100;
+  const comboMult = (1 + runStats.combo * 0.1).toFixed(1);
+  const comboPct = (runStats.comboTimer / COMBO_WINDOW) * 100;
 
   return (
     <Html fullscreen style={{ pointerEvents: 'none' }}>
@@ -24,6 +30,33 @@ export function HUD() {
         <div>⚡ Cores: {energyCores}</div>
         <div>💎 Shards: {shards}</div>
         <div>❤️ HP: {player.hp}/{player.maxHp}</div>
+        <div>📏 Dist: {Math.floor(runStats.distance)} m</div>
+        <div>⏱️ Time: {runStats.time.toFixed(1)} s</div>
+      </div>
+
+      {/* 分數 + 連擊（畫面上方中央） */}
+      <div style={{
+        position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)',
+        color: 'white', fontFamily: 'monospace', textAlign: 'center',
+        textShadow: '2px 2px 6px black'
+      }}>
+        <div style={{ fontSize: 34, fontWeight: 'bold' }}>{runStats.score.toLocaleString()}</div>
+        {runStats.combo > 1 && (
+          <div style={{ marginTop: 4 }}>
+            <div style={{ fontSize: 20, color: '#ffcc00' }}>
+              COMBO x{runStats.combo} · ×{comboMult}
+            </div>
+            <div style={{
+              width: 160, height: 5, margin: '4px auto 0', background: '#333',
+              borderRadius: 3, overflow: 'hidden'
+            }}>
+              <div style={{
+                width: `${comboPct}%`, height: '100%', background: '#ffcc00',
+                transition: 'width 0.1s linear'
+              }} />
+            </div>
+          </div>
+        )}
       </div>
       
       {/* 血量條 */}
@@ -74,10 +107,10 @@ export function HUD() {
       )}
 
       <div style={{
-        position: 'absolute', top: 20, right: 20, color: 'white', fontSize: 12,
+        position: 'absolute', top: 52, right: 20, color: 'white', fontSize: 12,
         fontFamily: 'monospace', background: 'rgba(0,0,0,0.5)', padding: 6, borderRadius: 4
       }}>
-        Quality: 3
+        Quality: {quality}
       </div>
     </Html>
   );

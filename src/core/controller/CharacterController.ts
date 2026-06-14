@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { InputFrame, ControllerConfig } from '../input/InputManager';
 import { DEFAULT_MOVEMENT, DEFAULT_ADVANCED, type AdvancedConfig } from './MovementSettings';
 import { useGameStore } from '../../stores/gameStore';
+import { HIT_INVULN, FALL_DEATH_Y } from '../combat/CombatSettings';
 
 export class CharacterController {
   config: ControllerConfig;
@@ -25,10 +26,10 @@ export class CharacterController {
   // For Z-axis movement
   private moveDir: THREE.Vector3 = new THREE.Vector3();
   private invincibleTimer: number = 0;
-  private maxReachedZ: number = 0; // safety: position never goes backward
+  maxReachedZ: number = 0; // safety: position never goes backward; also = run distance
   private hasDoubleJumped = false;
   private canDoubleJump = true;
-  godMode = true; // DEBUG: disable all damage and death
+  godMode = false; // DEBUG: set true to disable all damage and death
 
   constructor(cfg: Partial<ControllerConfig> = {}, adv: Partial<AdvancedConfig> = {}) {
     this.config = { ...DEFAULT_MOVEMENT, ...cfg };
@@ -48,11 +49,21 @@ export class CharacterController {
     this.wallSlideCount = 0;
   }
   
-  applyDamage(amount: number) {
+  applyDamage() {
     if (this.godMode || this.invincibleTimer > 0) return;
     const store = useGameStore.getState();
-    store.setPlayerState({ hp: Math.max(0, store.player.hp - amount) });
-    this.invincibleTimer = 1.5;
+    if (store.collectibles.rings > 0) {
+      // Sonic-style: lose all rings as a shield, survive the hit.
+      store.loseRings();
+      store.resetCombo();
+      this.invincibleTimer = HIT_INVULN;
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('rings-scatter', { detail: this.pos.clone() }));
+      }
+    } else {
+      // No rings left — lethal hit.
+      store.setPlayerState({ hp: 0 });
+    }
   }
 
   update(delta: number, input: InputFrame) {
@@ -142,6 +153,12 @@ export class CharacterController {
       this.hasDoubleJumped = false;
       this.canDoubleJump = true;
     }
+
+    // Fell out of the world (relevant once Phase 2 adds pits) — lethal.
+    if (this.pos.y < FALL_DEATH_Y && !this.godMode) {
+      store.setPlayerState({ hp: 0 });
+    }
+
     this.pushState(store);
   }
 

@@ -2,6 +2,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { COMBO_WINDOW } from '../core/combat/CombatSettings';
 
 // Inline type definitions for store
 export interface PlayerState {
@@ -34,12 +35,30 @@ export interface CollectibleProgress {
 
 export type GamePhase = 'menu' | 'playing' | 'paused' | 'gameover' | 'levelComplete';
 
+export interface RunStats {
+  score: number;
+  combo: number;          // current combo count (0 = no combo)
+  comboTimer: number;     // seconds left before the combo resets
+  distance: number;       // synced from controller.maxReachedZ
+  time: number;           // elapsed seconds this run
+  enemiesDefeated: number;
+  deaths: number;
+}
+
+export interface BestRecords {
+  highScore: number;
+  longestDistance: number;
+  mostRings: number;
+}
+
 export interface GameState {
   phase: GamePhase;
   currentZone: string;
   player: PlayerState;
   abilities: AbilityState[];
   collectibles: CollectibleProgress;
+  runStats: RunStats;
+  bestRecords: BestRecords;
   timeScale: number;
   setPhase: (p: GamePhase) => void;
   setPlayerState: (partial: Partial<PlayerState>) => void;
@@ -48,6 +67,15 @@ export interface GameState {
   addRings: (n: number) => void;
   addEnergyCores: (n: number) => void;
   addShard: (id: string) => void;
+  loseRings: () => void;
+  addScore: (base: number) => void;
+  addCombo: () => void;
+  resetCombo: () => void;
+  addEnemyDefeated: () => void;
+  setDistance: (d: number) => void;
+  tickRun: (dt: number) => void;
+  commitRecords: () => void;
+  resetRun: () => void;
   setTimeScale: (s: number) => void;
   resetPlayer: () => void;
 
@@ -63,6 +91,22 @@ const initialPlayer: PlayerState = {
   energy: 0,
   action: 'idle',
   invincible: false,
+};
+
+const initialRunStats: RunStats = {
+  score: 0,
+  combo: 0,
+  comboTimer: 0,
+  distance: 0,
+  time: 0,
+  enemiesDefeated: 0,
+  deaths: 0,
+};
+
+const initialBestRecords: BestRecords = {
+  highScore: 0,
+  longestDistance: 0,
+  mostRings: 0,
 };
 
 const initialAbilities: AbilityState[] = [
@@ -87,6 +131,8 @@ export const useGameStore = create<GameState>()(
         energyCores: 0,
         shards: [],
       },
+      runStats: { ...initialRunStats },
+      bestRecords: { ...initialBestRecords },
       timeScale: 1.0,
       setPhase: (phase) => set({ phase }),
       setPlayerState: (partial) =>
@@ -119,6 +165,53 @@ export const useGameStore = create<GameState>()(
             shards: [...s.collectibles.shards, id],
           },
         })),
+      loseRings: () =>
+        set((s) => ({
+          collectibles: { ...s.collectibles, rings: 0 },
+        })),
+      addScore: (base) =>
+        set((s) => ({
+          runStats: {
+            ...s.runStats,
+            score: s.runStats.score + Math.round(base * (1 + s.runStats.combo * 0.1)),
+          },
+        })),
+      addCombo: () =>
+        set((s) => ({
+          runStats: { ...s.runStats, combo: s.runStats.combo + 1, comboTimer: COMBO_WINDOW },
+        })),
+      resetCombo: () =>
+        set((s) => ({
+          runStats: { ...s.runStats, combo: 0, comboTimer: 0 },
+        })),
+      addEnemyDefeated: () =>
+        set((s) => ({
+          runStats: { ...s.runStats, enemiesDefeated: s.runStats.enemiesDefeated + 1 },
+        })),
+      setDistance: (d) =>
+        set((s) =>
+          d > s.runStats.distance ? { runStats: { ...s.runStats, distance: d } } : {}
+        ),
+      tickRun: (dt) =>
+        set((s) => {
+          const time = s.runStats.time + dt;
+          let combo = s.runStats.combo;
+          let comboTimer = s.runStats.comboTimer;
+          if (comboTimer > 0) {
+            comboTimer = Math.max(0, comboTimer - dt);
+            if (comboTimer === 0) combo = 0;
+          }
+          return { runStats: { ...s.runStats, time, combo, comboTimer } };
+        }),
+      commitRecords: () =>
+        set((s) => ({
+          bestRecords: {
+            highScore: Math.max(s.bestRecords.highScore, s.runStats.score),
+            longestDistance: Math.max(s.bestRecords.longestDistance, s.runStats.distance),
+            mostRings: Math.max(s.bestRecords.mostRings, s.collectibles.rings),
+          },
+        })),
+      resetRun: () => set({ runStats: { ...initialRunStats } }),
       setTimeScale: (scale) => set({ timeScale: scale }),
       resetPlayer: () =>
         set({ player: { ...initialPlayer }, phase: 'playing' }),
@@ -128,6 +221,7 @@ export const useGameStore = create<GameState>()(
       partialize: (state) => ({
         collectibles: state.collectibles,
         abilities: state.abilities,
+        bestRecords: state.bestRecords,
       }),
     }
   )

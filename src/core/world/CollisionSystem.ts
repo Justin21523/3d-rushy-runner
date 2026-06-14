@@ -46,7 +46,7 @@ export class CollisionSystem {
 
       if (type === 'obstacle') {
         if (dist < 1.2 && !store.player.invincible) {
-          store.setPlayerState({ hp: Math.max(0, store.player.hp - 10) });
+          this.controller.applyDamage(); // ring-shield: scatter rings or die
           this.controller.vel.y = 5;
           const pushDir = new THREE.Vector3()
             .subVectors(playerPos, objPos)

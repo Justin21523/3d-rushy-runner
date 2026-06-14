@@ -1,11 +1,18 @@
 import * as THREE from 'three';
 import { EnemyAI } from './EnemyAI';
 import { EnemyTemplate, ENEMY_TYPES } from './EnemyTypes';
+import { CharacterController } from '../controller/CharacterController';
+import { useGameStore } from '../../stores/gameStore';
+import {
+  STOMP_RADIUS, STOMP_BOUNCE, STOMP_MIN_FALL_SPEED,
+  STOMP_DAMAGE, STOMP_BOSS_DAMAGE, SCORE_STOMP,
+} from '../combat/CombatSettings';
 
 export class EnemyManager {
   private scene: THREE.Scene;
   private enemies: EnemyAI[] = [];
   private getPlayerZ: () => number;
+  private controller: CharacterController;
   private spawnDistance = 50;
   private despawnDistance = 35;
   private spawnedChunks = new Set<number>();
@@ -17,9 +24,10 @@ export class EnemyManager {
     this.spawnEnemy(stage.z + 25, ENEMY_TYPES.boss);
   };
 
-  constructor(scene: THREE.Scene, getPlayerZ: () => number) {
+  constructor(scene: THREE.Scene, getPlayerZ: () => number, controller: CharacterController) {
     this.scene = scene;
     this.getPlayerZ = getPlayerZ;
+    this.controller = controller;
     window.addEventListener('boss-encounter', this.onBossEncounter);
   }
 
@@ -35,13 +43,45 @@ export class EnemyManager {
 
     this.enemies.forEach(e => e.update(delta));
 
+    this.resolvePlayerCollisions();
+
     this.enemies = this.enemies.filter(e => {
-      if (e.mesh.position.z < playerZ - this.despawnDistance) {
-        e.dispose();
+      if (e.disposed || e.mesh.position.z < playerZ - this.despawnDistance) {
+        if (!e.disposed) e.dispose();
         return false;
       }
       return true;
     });
+  }
+
+  /** Player ↔ enemy contact: stomp from above kills, side contact hurts. */
+  private resolvePlayerCollisions() {
+    const store = useGameStore.getState();
+    const p = store.player;
+    const px = p.position[0], py = p.position[1], pz = p.position[2];
+    const playerFalling = this.controller.vel.y < STOMP_MIN_FALL_SPEED;
+
+    for (const enemy of this.enemies) {
+      if (enemy.disposed) continue;
+      const ex = enemy.mesh.position.x, ey = enemy.mesh.position.y, ez = enemy.mesh.position.z;
+      const dx = px - ex, dz = pz - ez;
+      const horizDist = Math.hypot(dx, dz);
+      if (horizDist > STOMP_RADIUS) continue;
+
+      const fromAbove = playerFalling && py > ey + enemy.halfHeight * 0.5;
+      if (fromAbove) {
+        enemy.takeDamage(enemy.isBoss ? STOMP_BOSS_DAMAGE : STOMP_DAMAGE);
+        this.controller.vel.y = STOMP_BOUNCE;
+        store.addScore(SCORE_STOMP);
+        store.addCombo();
+        if (enemy.disposed) store.addEnemyDefeated();
+        window.dispatchEvent(new CustomEvent('enemy-stomp', {
+          detail: new THREE.Vector3(ex, ey, ez),
+        }));
+      } else if (!p.invincible) {
+        window.dispatchEvent(new CustomEvent('enemy-attack', { detail: enemy.damage }));
+      }
+    }
   }
 
   private spawnEnemy(z: number, forcedTemplate?: EnemyTemplate) {
@@ -68,6 +108,8 @@ export class EnemyManager {
       chaseSpeed: template.chaseSpeed,
       detectRange: template.detectRange,
       damage: template.damage,
+      halfHeight: template.halfHeight,
+      isBoss: template.type === 'boss',
     });
     this.scene.add(mesh);
     this.enemies.push(ai);

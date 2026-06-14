@@ -1,4 +1,5 @@
 import { CharacterController } from '../controller/CharacterController';
+import { useGameStore } from '../../stores/gameStore';
 
 export interface SuperAbility {
   id: string;
@@ -33,7 +34,9 @@ const superAbilities: Record<string, SuperAbility> = {
       ctrl.vel.z += 60;
       ctrl.isDashing = true;
       ctrl.dashTimer = 0.2;
-      ctrl.applyDamage(-10); // heal instead of damage
+      // Heal a little on activation.
+      const store = useGameStore.getState();
+      store.setPlayerState({ hp: Math.min(store.player.maxHp, store.player.hp + 10) });
     },
   },
   gravityField: {
